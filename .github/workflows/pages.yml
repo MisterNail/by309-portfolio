@@ -1,0 +1,43 @@
+name: Publish portfolio
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Unpack source archive
+        run: python -m zipfile -e by309-portfolio-github-pages-source.zip build
+      - name: Build bilingual site
+        run: python build/by309-portfolio/scripts/build.py
+      - name: Check pages and assets
+        run: python build/by309-portfolio/scripts/check.py
+      - name: Check browser script
+        run: node --check build/by309-portfolio/dist/assets/site.js
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/by309-portfolio/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
